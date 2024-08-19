@@ -6,23 +6,35 @@ services:
     networks:
       - exorde-network
     ports:
-      - "7998:8000"
+      - "7997-7998:8000"
     labels:
       - "network.exorde.monitor=true"
       - "network.exorde.service=upipe"
     restart: always
     environment:
-      - TRACE=${TRACE:-false}
-      - TIMEOUT=${UPIPE_PROCESSING_TIMEOUT:-8}
+      - TRACE=true
+      - TIMEOUT=5
     init: true
     deploy:
-      replicas: ${UPIPE_SIZE:-1}
+      replicas: 2
+      resources:
+        limits:
+          memory: 6G
+        reservations:
+          memory: 6G
+          devices:
+           - driver: nvidia
+             device_ids: ['0']
+             capabilities: [gpu]
+
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
       interval: 5s
       timeout: 1s
       retries: 10
       start_period: 180s
+
+
 
   bpipe:
     image: exordelabs/bpipe:latest
@@ -36,7 +48,7 @@ services:
     restart: always
     environment:
       - batch_size=20
-      - TRACE=${TRACE:-false}
+      - TRACE=true
     init: true
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
@@ -45,12 +57,16 @@ services:
       retries: 10
       start_period: 180s
     deploy:
-      replicas: ${BPIPE_SIZE:-1}
+      replicas: 1
       resources:
         limits:
           memory: 6G
         reservations:
           memory: 6G
+          devices:
+           - driver: nvidia
+             device_ids: ['0']
+             capabilities: [gpu]
 
   transactioneer:
     image: exordelabs/transactioneer:latest
@@ -65,8 +81,8 @@ services:
     ports:
       - "7991:8000"
     environment:
-      - main_address=${MAIN_ADDRESS}
-      - TRACE=${TRACE:-false}
+      - main_address=0x60e0f0f100B22e1783B4B4DB68a1115aEaCD0f3C
+      - TRACE=true
     init: true
     working_dir: /app/
     command: python3.10 /app/transactioneer.py
